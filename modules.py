@@ -123,7 +123,7 @@ class PromptInputEmbedding(nn.Module):
     ) -> None:
         super(PromptInputEmbedding, self).__init__()
         self.embedding_layer = embedding_layer
-        self.prefix_len = prompt_len
+        self.prefix_len = prefix_len
         self.hidden_prefix_dim = hidden_prefix_dim
         self.k = k
         self.iters = 0
