@@ -9,13 +9,13 @@ def train_gpt2_with_prefix(model_checkpoint="distilgpt2", prompt_len=1):
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     original_wte = model.transformer.wte    # Embedding params
+    for param in model.parameters():
+        param.requires_grad = False
+
     model.transformer.wte = PromptInputEmbedding(original_wte, prompt_len, True, 512)
 
     # load e2e dataset 
     lm_datasets = get_e2e(model_checkpoint, prompt_len)
-
-    for param in model.parameters():
-        param.requires_grad = False
 
     # Prepare training arguments
     training_args = TrainingArguments(
