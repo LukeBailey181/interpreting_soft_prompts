@@ -11,15 +11,8 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     # original_wte = model.transformer.wte    # Embedding params
-    print("PARAMS BEFORE FREEZING")
-    for param in model.parameters():
-        print(param.requires_grad)
-
-
-    """ 
     for param in model.parameters():
         param.requires_grad = False
-    """
 
     # load e2e dataset 
     lm_datasets = get_e2e("distilgpt2", prompt_len)
@@ -60,6 +53,8 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt
         args=TrainingArguments("test-clm", per_device_eval_batch_size=8),
     )
 
+    print(len(lm_datasets["test"]))
+    return
     # Use model to predict splits in the test data
     predictions1 = trainer.predict(lm_datasets["test"].select(range(100)), metric_key_prefix="test_bleu")
     predictions2 = trainer.predict(lm_datasets["test"].select(range(100, 200)), metric_key_prefix="test_bleu")
@@ -75,6 +70,6 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt
     print("Average Bleu: ", average_bleu/4)
 
 if __name__ == "__main__":
-    train_gpt2_with_prefix()
+    evaluate_gpt2_with_prefix("test-clm/checkpoint-972")
 
 #Average Bleu:  55.19827842712402
