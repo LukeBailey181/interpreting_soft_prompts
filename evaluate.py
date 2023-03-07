@@ -58,7 +58,7 @@ def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_le
     for p in predictions:
         bleu = p[2]['test_bleu_loss']
         average_bleu += bleu
-    print("Average Bleu: ", average_bleu)
+    print("Average Bleu: ", average_bleu/4)
 
 if __name__ == "__main__":
     train_gpt2_with_prefix()
