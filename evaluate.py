@@ -6,17 +6,25 @@ from modules import PromptInputEmbedding
 
 import numpy as np
 
-def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_len=1):
+def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_len=1):
 
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     # original_wte = model.transformer.wte    # Embedding params
+    print("PARAMS BEFORE FREEZING")
+    for param in model.parameters():
+        print(param.requires_grad)
+
+
+    """ 
     for param in model.parameters():
         param.requires_grad = False
+    """
 
     # load e2e dataset 
     lm_datasets = get_e2e("distilgpt2", prompt_len)
 
+    """
     # Prepare training arguments
     training_args = TrainingArguments(
         "test-clm",
@@ -45,6 +53,12 @@ def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_le
         args=training_args,
         callbacks=callbacks,
     )
+    """
+    # Setup training just to use predict interface
+    trainer = Trainer(
+        model,
+        args=TrainingArguments("test-clm", per_device_eval_batch_size=8),
+    )
 
     # Use model to predict splits in the test data
     predictions1 = trainer.predict(lm_datasets["test"].select(range(100)), metric_key_prefix="test_bleu")
@@ -53,7 +67,7 @@ def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_le
     predictions4 = trainer.predict(lm_datasets["test"].select(range(300, 374)), metric_key_prefix="test_bleu")
 
     #Calculate average BLEU metric across sets
-    predictions = [predictions1, predictions2, predictions3, predictions4 ]
+    predictions = [predictions1, predictions2, predictions3, predictions4]
     average_bleu = 0
     for p in predictions:
         bleu = p[2]['test_bleu_loss']
