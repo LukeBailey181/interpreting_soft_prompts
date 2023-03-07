@@ -14,8 +14,6 @@ def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_le
     for param in model.parameters():
         param.requires_grad = False
 
-    # model.transformer.wte = PromptInputEmbedding(original_wte, prompt_len, True, 512)
-
     # load e2e dataset 
     lm_datasets = get_e2e("distilgpt2", prompt_len)
 
@@ -41,20 +39,20 @@ def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_le
     )
     callbacks.append(early_stopping)
 
+    #Set up trainer
     trainer = Trainer(
         model=model,
         args=training_args,
         callbacks=callbacks,
     )
 
-    # Train model 
+    # Use model to predict splits in the test data
     predictions1 = trainer.predict(lm_datasets["test"].select(range(100)), metric_key_prefix="test_bleu")
     predictions2 = trainer.predict(lm_datasets["test"].select(range(100, 200)), metric_key_prefix="test_bleu")
     predictions3 = trainer.predict(lm_datasets["test"].select(range(200, 300)), metric_key_prefix="test_bleu")
     predictions4 = trainer.predict(lm_datasets["test"].select(range(300, 374)), metric_key_prefix="test_bleu")
 
-    # preds = np.concatenate((predictions1, predictions2))
-
+    #Calculate average BLEU metric across sets
     predictions = [predictions1, predictions2, predictions3, predictions4 ]
     average_bleu = 0
     for p in predictions:
