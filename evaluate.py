@@ -42,9 +42,9 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    evaluate_gpt2_with_prefix("test-clm/checkpoint-1320", 50, 10)
+    #evaluate_gpt2_with_prefix("test-clm/checkpoint-1320", 50, 10)
 
     # This code evaluates plain gpt2
-    #evaluate_gpt2_with_prefix("gpt2", 50, 0)
+    evaluate_gpt2_with_prefix("gpt2", 50, 0)
 
 #Average Bleu:  55.19827842712402
