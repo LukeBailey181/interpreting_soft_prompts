@@ -6,7 +6,7 @@ from modules import PromptInputEmbedding
 
 import numpy as np
 
-def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1):
+def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1, model_type="gpt2"):
 
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
@@ -14,7 +14,7 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
         param.requires_grad = False
 
     # load e2e dataset 
-    lm_datasets = get_e2e("distilgpt2", prompt_len)
+    lm_datasets = get_e2e(model_type, prompt_len)
 
     # Setup Trainer just to use predict interface
     trainer = Trainer(
@@ -32,12 +32,19 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
  
     #Calculate average BLEU metric across sets
     average_bleu = 0
+    bleu_vals = []
     for p in predictions:
         bleu = p[2]['test_bleu_loss']
         average_bleu += bleu
+        bleu_vals.append(bleu)
+
+    print(bleu_vals)
     print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    evaluate_gpt2_with_prefix("test-clm/checkpoint-972", 50)
+    evaluate_gpt2_with_prefix("test-clm/checkpoint-1320", 50, 10)
+
+    # This code evaluates plain gpt2
+    #evaluate_gpt2_with_prefix("gpt2", 50, 0)
 
 #Average Bleu:  55.19827842712402

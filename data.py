@@ -34,7 +34,9 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
 
         # Split by chunks of max_len.
         input_ids = concatenated_examples["input_ids"]
+        attention_masks = concatenated_examples["attention_mask"]
         result = {}
+
         result["input_ids"] = [
             dummy_input_prefix + input_ids[i : i + block_size]
             for i in range(0, total_length, block_size)
@@ -43,8 +45,6 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
             dummy_label_prefix + input_ids[i : i + block_size]
             for i in range(0, total_length, block_size)
         ]
-
-        attention_masks = concatenated_examples["attention_mask"]
         result["attention_mask"] = [
             dummy_attention_mask_prefix + attention_masks[i : i + block_size]
             for i in range(0, total_length, block_size)

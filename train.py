@@ -5,15 +5,14 @@ from data import get_e2e
 from modules import PromptInputEmbedding
 
 def train_gpt2_with_prefix(
-    model_checkpoint="distilgpt2",
-    prompt_len=1,
+    model_checkpoint="gpt2",
+    prompt_len=10,
     lr=8e-5,
-    epochs=4,
+    epochs=5,
     batch_size=10,
     early_stopping=False,
     model_output_dir="test-clm"
 ):
-
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     original_wte = model.transformer.wte    # Embedding params
