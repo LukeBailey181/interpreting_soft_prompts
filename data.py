@@ -4,17 +4,37 @@ from transformers import AutoTokenizer
 def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512):
     """Load e2e dataset and tokeize"""
 
+    def tokenize_e2e_test(examples):
+        """Helper function for tokenizing e2e test set"""
+        input_prompt = [
+            "Summarize: " + x + "\n 
+            for x examples["meaning_representation"])
+        ]
+        label = [
+            "Answer: " + y + tokenizer.eos_token 
+            for y in examples["human_reference"]
+        ]
+        d = {
+            "input_ids" : tokenizer(input_prompt)["input_ids"]
+            "attention_mask" : tokenizer(input_prompt)["attention_mask"]
+            "labels" : tokenizer(label)["attention_mask"]
+        }
+
+        return d
+
     def tokenize_e2e_seq2seq(examples):
         """Helper function for tokenizing e2e dataset"""
 
         prompt = [
-            "Summarize: " + x + tokenizer.bos_token + y + tokenizer.eos_token 
+            "Summarize: " + x + "\nAnswer: " + y + tokenizer.eos_token 
             for x, y in zip(examples["meaning_representation"], examples["human_reference"])
         ]
+        #tokenizer_args = {padding:"max_length", truncation:True, max_length=512}
+        tokenizer_args = {}
         d = {
-            "input_ids": tokenizer(prompt, padding=False)["input_ids"],
-            "attention_mask": tokenizer(prompt, padding=False)["attention_mask"],
-            "labels": tokenizer(prompt, padding=False)["input_ids"],
+            "input_ids": tokenizer(prompt, **tokenizer_args)["input_ids"],
+            "attention_mask": tokenizer(prompt, **tokenizer_args)["attention_mask"],
+            "labels": tokenizer(prompt, **tokenizer_args)["input_ids"],
         }
 
         return d
@@ -99,22 +119,12 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
     datasets = load_dataset("e2e_nlg")
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    tokenizer.add_special_tokens({
+        "pad_token": tokenizer.eos_token,
+    })
+    #tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
-    # Process dataset
-    """
-    tokenized_datasets = datasets.map(
-        tokenize_e2e,
-        num_proc=4,
-        batched=True,
-        remove_columns=["meaning_representation", "human_reference"],
-    )
-    lm_datasets = tokenized_datasets.map(
-        group_texts,
-        batched=True,
-        num_proc=4,
-    )
-    """
+
 
     tokenized_datasets = datasets.map(
         tokenize_e2e_seq2seq,
@@ -122,11 +132,27 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
         batched=True,
         remove_columns=["meaning_representation", "human_reference"],
     )
+    """
+    # Process dataset
+    tokenized_datasets = datasets.map(
+        tokenize_e2e,
+        num_proc=4,
+        batched=True,
+        remove_columns=["meaning_representation", "human_reference"],
+    )
+    """
+    lm_datasets = tokenized_datasets.map(
+        group_texts,
+        batched=True,
+        num_proc=4,
+    )
+    """
     lm_datasets = tokenized_datasets.map(
         add_prompt_dummy_tokens,
         batched=True,
         num_proc=4,
     )
+    """
 
     for example in lm_datasets["test"]:
         assert(len(example["input_ids"]) == len(example["labels"]))
