@@ -25,7 +25,10 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     # Run evaluation in batches of training set to avoid GPU OOM
     N = len(lm_datasets["test"])
     predictions = []
-    for k in range(0, N, eval_step):
+    for idx, k in enumerate(range(0, N, eval_step)):
+        #if idx == 10:
+        #    break
+        print(f"{idx} / {N // eval_step}")
         window = range(k, min(k+eval_step, N))
         preds = trainer.predict(lm_datasets["test"].select(window), metric_key_prefix="test_bleu")
         predictions.append(preds)
@@ -42,9 +45,9 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    #evaluate_gpt2_with_prefix("test-clm/checkpoint-1320", 50, 10)
+    evaluate_gpt2_with_prefix("test_model/checkpoint-2660", 50, 10)
 
     # This code evaluates plain gpt2
-    evaluate_gpt2_with_prefix("gpt2", 50, 0)
+    #evaluate_gpt2_with_prefix("gpt2", 50, 0)
 
 #Average Bleu:  55.19827842712402
