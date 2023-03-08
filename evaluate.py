@@ -6,61 +6,45 @@ from modules import PromptInputEmbedding
 
 import numpy as np
 
-def train_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", prompt_len=1):
+def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1, model_type="gpt2"):
 
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
-    # original_wte = model.transformer.wte    # Embedding params
     for param in model.parameters():
         param.requires_grad = False
 
     # load e2e dataset 
-    lm_datasets = get_e2e("distilgpt2", prompt_len)
+    lm_datasets = get_e2e(model_type, prompt_len)
 
-    # Prepare training arguments
-    training_args = TrainingArguments(
-        "test-clm",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        learning_rate=3e-3,
-        weight_decay=0.01,
-        metric_for_best_model="eval_loss",
-        load_best_model_at_end=True,
-        per_device_eval_batch_size=8
-    )
-
-    callbacks = []
-
-    patience = 10
-    threshold = 0.
-    early_stopping = EarlyStoppingCallback(
-        early_stopping_patience=patience,
-        early_stopping_threshold=threshold
-    )
-    callbacks.append(early_stopping)
-
-    #Set up trainer
+    # Setup Trainer just to use predict interface
     trainer = Trainer(
-        model=model,
-        args=training_args,
-        callbacks=callbacks,
+        model,
+        args=TrainingArguments("test-clm", per_device_eval_batch_size=8),
     )
 
-    # Use model to predict splits in the test data
-    predictions1 = trainer.predict(lm_datasets["test"].select(range(100)), metric_key_prefix="test_bleu")
-    predictions2 = trainer.predict(lm_datasets["test"].select(range(100, 200)), metric_key_prefix="test_bleu")
-    predictions3 = trainer.predict(lm_datasets["test"].select(range(200, 300)), metric_key_prefix="test_bleu")
-    predictions4 = trainer.predict(lm_datasets["test"].select(range(300, 374)), metric_key_prefix="test_bleu")
-
+    # Run evaluation in batches of training set to avoid GPU OOM
+    N = len(lm_datasets["test"])
+    predictions = []
+    for k in range(0, N, eval_step):
+        window = range(k, min(k+eval_step, N))
+        preds = trainer.predict(lm_datasets["test"].select(window), metric_key_prefix="test_bleu")
+        predictions.append(preds)
+ 
     #Calculate average BLEU metric across sets
-    predictions = [predictions1, predictions2, predictions3, predictions4 ]
     average_bleu = 0
+    bleu_vals = []
     for p in predictions:
         bleu = p[2]['test_bleu_loss']
         average_bleu += bleu
-    print("Average Bleu: ", average_bleu/4)
+        bleu_vals.append(bleu)
+
+    print(bleu_vals)
+    print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    train_gpt2_with_prefix()
+    evaluate_gpt2_with_prefix("test-clm/checkpoint-1320", 50, 10)
+
+    # This code evaluates plain gpt2
+    #evaluate_gpt2_with_prefix("gpt2", 50, 0)
 
 #Average Bleu:  55.19827842712402
