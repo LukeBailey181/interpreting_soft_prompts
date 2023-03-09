@@ -3,6 +3,10 @@ from torch import Tensor
 from torch import nn
 from torch.nn.parameter import Parameter
 
+""" 
+This file contains the pytorch modules requires to implement prefix tuning as described in 
+https://arxiv.org/abs/2101.00190
+"""
 
 class ContinuousPrefix(nn.Module):
     """Continuous prefix embedding that that will be learnt during the training
@@ -10,23 +14,39 @@ class ContinuousPrefix(nn.Module):
     """
 
     def __init__(self, embedding_layer, prefix_len):
+        """Keyword arguments:
+        embedding_layer -- Normal GPT2 embeddings layer
+        prefix_len -- number of tokens in continuous prefix
+        """
+
+        # Get a 1dd array of length prefix_len, where each element is a random integer 
+        # between 0 and the number of embeddings. These will be used to randomly 
+        # initialize the continuous prompt.
         super(ContinuousPrefix, self).__init__()
         init_idx = torch.randint(0, embedding_layer.weight.shape[0], (prefix_len,))
 
+        # Create continuous embeddings
         self.continuous_embeds = nn.ParameterList()
         for i in init_idx:
+            # Select a random embedding as the starting continous embedding
             continuous_embed = nn.Parameter(torch.zeros(embedding_layer.embedding_dim))
             with torch.no_grad():
                 continuous_embed.copy_(embedding_layer.weight[i])
             self.continuous_embeds.append(continuous_embed)
 
     def freeze_prefix_at_index(self, idx: int):
+        """Used to freeze certain continuous embeddings. Not needed for baseline 
+        implementation but a feature we will use in the real project.
+        """
+
         self.continuous_embeds[idx].requires_grad = False
 
     def is_frozen(self, idx: int):
         return not self.continuous_embeds[idx].requires_grad
 
     def __getitem__(self, idx: int):
+        """PromptInputEmbeddings accesses embedding vectors through this interface"""
+
         return self.continuous_embeds[idx]
 
     def __len__(self):
@@ -34,7 +54,7 @@ class ContinuousPrefix(nn.Module):
 
 
 class MLP(nn.Module):
-    """Standard MLP implementation"""
+    """Standard MLP implementation. Used in ContinousPrefixMLP"""
 
     def __init__(
         self,
@@ -64,8 +84,12 @@ class MLP(nn.Module):
 
 
 class ContinuousPrefixMLP(nn.Module):
-    """MLP used to reparametrize prefix. Only used if implementing
-    Prefix-Tuning as described in https://arxiv.org/pdf/2101.00190.pdf.
+    """MLP used to reparametrize prefix.
+
+    We still store continuous embeddings (of size hidden_dim) but run them
+    through an MLP (that outputs vectors of size embedding_dim) before
+    accessing them in the embedding space of the model. The MLPs parameters are
+    learnt during training just like the continuous prompts.
     """
 
     def __init__(
@@ -75,6 +99,13 @@ class ContinuousPrefixMLP(nn.Module):
         embedding_dim,
         no_hidden_layers=0,
     ):
+        """Keyword arguments:
+        prefix_len -- number of tokens in continuous prefix
+        hidden_dim -- mlp hidden dimension size
+        embedding_dim -- single embedding size 
+        no_hidden_layers -- number of hidden layers in mlp
+        """
+
         super(ContinuousPrefixMLP, self).__init__()
         self.prefix_len = prefix_len
         self.hidden_dim = hidden_dim
@@ -101,6 +132,11 @@ class ContinuousPrefixMLP(nn.Module):
         return self._is_frozen[idx]
 
     def __getitem__(self, idx):
+        """PromptInputEmbeddings accesses embedding vectors through this interface
+
+        To access the ith embedding vector, the continuous prompt is fed through the MLP
+        """
+
         row = self.continuous_embeds[idx]
         return self.mlp(row)
 
@@ -110,7 +146,7 @@ class ContinuousPrefixMLP(nn.Module):
 
 class PromptInputEmbedding(nn.Module):
     """Wrapper around continuous prefix allowing use of MLP reparametrization
-    or not.
+    or not. This is what is used to replace the embedding layer of GPT2
     """
 
     def __init__(
@@ -121,6 +157,14 @@ class PromptInputEmbedding(nn.Module):
         hidden_prefix_dim=None,
         k=1,
     ) -> None:
+        """Keyword arguments:
+        embedding_layer -- original embedding layer of GPT2
+        prefix_len -- number of tokens in continuous prefix
+        parameterize_embeds_with_mlp -- boolean indicating if MLP reparam is used
+        hidden_prefix_dim -- if using MLP, size of hidden embeddings that MLP reparams
+        k -- unused for now, will be in final project
+        """
+
         super(PromptInputEmbedding, self).__init__()
         self.embedding_layer = embedding_layer
         self.prefix_len = prefix_len
@@ -144,6 +188,8 @@ class PromptInputEmbedding(nn.Module):
         self.prefix = [0] * prefix_len
 
     def _prepend_prefix(self, input: torch.LongTensor):
+        """Remove dummy tokens at start of data of which there are prefix_len many"""
+
         # Discard dummy prefix
         input = input[:, : -self.prefix_len]
 

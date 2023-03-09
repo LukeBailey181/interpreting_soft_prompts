@@ -7,6 +7,15 @@ from modules import PromptInputEmbedding
 import numpy as np
 
 def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1, model_type="gpt2"):
+    """Evaluate a gpt2 model with prefix on the e2e dataset.
+
+    Keyword arguments:
+    model_checkpoint -- path to checkpoint or "gpt2" to use pretrained gpt2.
+    eval_step -- number of example to evaluate at once. Tune if GPU is running out of memory
+    prompt_len -- continuous prompt length used in the model you are evaluating. Set to 0 
+        if evaluating standard GPT2
+    model_type -- huggingface model type, used to instantiate appropriate tokenizer
+    """
 
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
