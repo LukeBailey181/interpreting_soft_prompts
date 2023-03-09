@@ -1,11 +1,25 @@
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512):
-    """Load e2e dataset and tokeize"""
+def get_e2e(model_checkpoint="gpt2", prompt_len=1, combined_block_size=512):
+    """Load e2e dataset, tokenize, and covert to sequence to sequence (seq2seq) 
+    format for training GPT2
+
+    Keyword arguments:
+    model_type -- huggingface model type, used to instantiate appropriate tokenizer
+    prompt_len -- number of tokens in continuous prefix
+    combined_block_size -- size to combine training examples to
+    """
 
     def tokenize_e2e_seq2seq(examples):
-        """Helper function for tokenizing e2e dataset with seq2seq format"""
+        """Helper function for tokenizing e2e dataset with seq2seq format
+
+        e2e dataset consists of [tabular data] with the target of [summary] labels. To 
+        learn this task with semi-supervised GPT2 we convert each training example 
+        to be of the form "Summarize: [tabular data], Answer: [summary]". At inference 
+        time we can prompt the model with "Summarize: [tabular data], Answer:" and 
+        it will generate a natural language summary.
+        """
 
         prompt = [
             "Summarize: " + x + "\nAnswer: " + y + tokenizer.eos_token 
@@ -16,19 +30,6 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
             "input_ids": tokenizer(prompt)["input_ids"],
             "attention_mask": tokenizer(prompt)["attention_mask"],
             "labels": tokenizer(prompt)["input_ids"],
-        }
-
-        return d
-
-    def tokenize_e2e(examples):
-        """Helper function for tokenizing e2e dataset"""
-
-        d = {
-            "input_ids": tokenizer(examples["meaning_representation"])["input_ids"],
-            "attention_mask": tokenizer(examples["meaning_representation"])[
-                "attention_mask"
-            ],
-            "labels": tokenizer(examples["human_reference"])["input_ids"],
         }
 
         return d
@@ -44,6 +45,7 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
         # customize this part to your needs.
         total_length = (total_length // block_size) * block_size
 
+        # Create dummy tokens due to prefix tuning
         dummy_input_prefix = [0] * prompt_len
         dummy_label_prefix = [-100] * prompt_len
         dummy_attention_mask_prefix = [1] * prompt_len
@@ -53,6 +55,7 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
         attention_masks = concatenated_examples["attention_mask"]
         result = {}
 
+        # Add dummy tokens 
         result["input_ids"] = [
             dummy_input_prefix + input_ids[i : i + block_size]
             for i in range(0, total_length, block_size)
@@ -69,7 +72,7 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
         return result
 
     def add_prompt_dummy_tokens(examples):
-        """Helper function to add prompt dummy tokens but not group"""
+        """Helper function to add prompt dummy tokens but not grouping"""
 
         dummy_input_prefix = [0] * prompt_len
         dummy_label_prefix = [-100] * prompt_len
@@ -99,9 +102,6 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
     datasets = load_dataset("e2e_nlg")
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    tokenizer.add_special_tokens({
-        "pad_token": tokenizer.eos_token,
-    })
 
     # Convert to tokenized seq2seq format
     tokenized_datasets = datasets.map(
@@ -117,6 +117,7 @@ def get_e2e(model_checkpoint="distilgpt2", prompt_len=1, combined_block_size=512
         num_proc=4,
     )
 
+    # Useful debugging assertions
     for example in lm_datasets["test"]:
         assert(len(example["input_ids"]) == len(example["labels"]))
         assert(len(example["input_ids"]) == len(example["attention_mask"]))

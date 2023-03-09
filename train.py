@@ -13,12 +13,24 @@ def train_gpt2_with_prefix(
     early_stopping=False,
     model_output_dir="test-clm"
 ):
+    """Keyword arguments:
+    model_checkpoint -- Huggingface model checkpoint to instantiate pretrained model
+    prompt_len -- numberer of tokens in continuous prompt
+    lr -- learning rate for training
+    epochs -- epochs for training
+    batch_size -- batch size for training
+    early_stopping -- if early stopping in training should be used 
+    model_output_dir -- directory to save model checkpoints to whilst training. If 
+        directory doesn't already exist it will be created.
+    """
+
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
     original_wte = model.transformer.wte    # Embedding params
     for param in model.parameters():
         param.requires_grad = False
 
+    # Insert continuous prompts
     model.transformer.wte = PromptInputEmbedding(original_wte, prompt_len, True, 512)
 
     # load e2e dataset 

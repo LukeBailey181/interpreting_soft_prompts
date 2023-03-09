@@ -7,6 +7,15 @@ from modules import PromptInputEmbedding
 import numpy as np
 
 def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1, model_type="gpt2"):
+    """Evaluate a gpt2 model with prefix on the e2e dataset.
+
+    Keyword arguments:
+    model_checkpoint -- path to checkpoint or "gpt2" to use pretrained gpt2.
+    eval_step -- number of example to evaluate at once. Tune if GPU is running out of memory
+    prompt_len -- continuous prompt length used in the model you are evaluating. Set to 0 
+        if evaluating standard GPT2
+    model_type -- huggingface model type, used to instantiate appropriate tokenizer
+    """
 
     # Load model and freeze all parameters
     model = AutoModelForCausalLM.from_pretrained(model_checkpoint)
@@ -26,8 +35,6 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     N = len(lm_datasets["test"])
     predictions = []
     for idx, k in enumerate(range(0, N, eval_step)):
-        #if idx == 10:
-        #    break
         print(f"{idx} / {N // eval_step}")
         window = range(k, min(k+eval_step, N))
         preds = trainer.predict(lm_datasets["test"].select(window), metric_key_prefix="test_bleu")
@@ -45,9 +52,7 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    evaluate_gpt2_with_prefix("test_model/checkpoint-2660", 50, 10)
+    evaluate_gpt2_with_prefix("test_model/checkpoint-2660", 200, 10)
 
     # This code evaluates plain gpt2
     #evaluate_gpt2_with_prefix("gpt2", 50, 0)
-
-#Average Bleu:  55.19827842712402
