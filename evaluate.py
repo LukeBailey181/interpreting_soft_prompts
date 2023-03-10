@@ -5,6 +5,7 @@ from data import get_e2e
 from modules import PromptInputEmbedding
 
 import numpy as np
+import sys
 
 def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_step=100, prompt_len=1, model_type="gpt2"):
     """Evaluate a gpt2 model with prefix on the e2e dataset.
@@ -52,7 +53,10 @@ def evaluate_gpt2_with_prefix(model_checkpoint="test-clm/checkpoint-243", eval_s
     print("Average Bleu: ", average_bleu/len(predictions))
 
 if __name__ == "__main__":
-    evaluate_gpt2_with_prefix("test_model/checkpoint-2660", 200, 10)
+
+    # Evaluate trained model. Note you may have to change the checkpoint path.
+    checkpoint_path = sys.argv[1]
+    evaluate_gpt2_with_prefix(checkpoint_path, 200, 10)
 
     # This code evaluates plain gpt2
     #evaluate_gpt2_with_prefix("gpt2", 50, 0)
